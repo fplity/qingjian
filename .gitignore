@@ -1,0 +1,15 @@
+*.iml
+.DS_Store
+
+# Local Android Studio, Gradle, Kotlin and Codex state.
+/.idea/
+/.gradle/
+/.kotlin/
+/.codex/
+/local.properties
+
+# Generated Android/Gradle output. Release APKs are upload-only and never tracked.
+**/build/
+/captures/
+.externalNativeBuild/
+.cxx/
