@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Qingjian are documented in this file.
+All notable changes to 青简 are documented in this file.
 
 ## [v1.0.0-debug] - 2026-07-13
 
@@ -15,5 +15,7 @@ All notable changes to Qingjian are documented in this file.
 
 - This is a debug prerelease preview, not a stable production release.
 - Complete Android device/emulator visual and interaction verification remains pending.
+
+Repository: https://github.com/fplity/qingjian
 
 [v1.0.0-debug]: RELEASE_NOTES_v1.0.0-debug.md
