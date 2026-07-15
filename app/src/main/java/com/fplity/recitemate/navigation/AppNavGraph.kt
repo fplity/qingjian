@@ -30,6 +30,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.fplity.recitemate.data.local.FontSize
+import com.fplity.recitemate.data.local.CompletionFeedback
+import com.fplity.recitemate.data.local.PetInteraction
 import com.fplity.recitemate.data.local.ReadingTheme
 import com.fplity.recitemate.data.local.UserPreferences
 import com.fplity.recitemate.data.model.Article
@@ -61,13 +63,14 @@ fun QingjianNavGraph(
     fontSize: FontSize,
     readingTheme: ReadingTheme,
     onToggleFavorite: (Int) -> Unit,
-    onCompleteRecitation: (Int) -> Unit,
+    onCompleteRecitation: (Int, (CompletionFeedback) -> Unit) -> Unit,
+    onVisitPet: () -> Unit,
+    onPetInteraction: (PetInteraction) -> Unit,
     onFontSizeChange: (FontSize) -> Unit,
     onReadingThemeChange: (ReadingTheme) -> Unit
 ) {
     val navController = rememberNavController()
     val today = LocalDate.now()
-    val hasCompletedToday = preferences.lastCompletedDate == today
     val dailyArticle = articles.getOrNull(Math.floorMod(today.toEpochDay(), articles.size.coerceAtLeast(1).toLong()).toInt())
     Scaffold(containerColor = Cream, bottomBar = { FloatingBottomNavigation(navController) }) { padding ->
         NavHost(navController = navController, startDestination = AppRoute.HOME, modifier = Modifier.padding(padding)) {
@@ -84,10 +87,14 @@ fun QingjianNavGraph(
                 )
             }
             composable(AppRoute.PRACTICE) {
-                PracticeScreen(articles, hasCompletedToday, onCompleteRecitation)
+                PracticeScreen(
+                    articles = articles,
+                    learnedArticleIds = preferences.learnedArticleIds,
+                    onComplete = { articleId, onFeedback -> onCompleteRecitation(articleId, onFeedback) }
+                )
             }
             composable(AppRoute.GARDEN) {
-                PetGardenScreen(preferences.leafTotal, preferences.currentStreak, preferences.learnedArticleIds.size)
+                PetGardenScreen(preferences, onVisitPet, onPetInteraction) { navController.navigate(AppRoute.PRACTICE) }
             }
             composable(AppRoute.FAVORITES) {
                 FavoritesScreen(articles.filter { it.id in preferences.favorites }, preferences.favorites, { navController.navigate(AppRoute.detail(it)) }, onToggleFavorite)
@@ -102,10 +109,10 @@ fun QingjianNavGraph(
                         article = article,
                         isFavorite = article.id in preferences.favorites,
                         fontScale = fontSize.scale,
-                        hasCompletedToday = hasCompletedToday,
+                        hasCompletedArticle = article.id in preferences.learnedArticleIds,
                         onBack = { navController.popBackStack() },
                         onToggleFavorite = { onToggleFavorite(article.id) },
-                        onComplete = { onCompleteRecitation(article.id) }
+                        onComplete = { onFeedback -> onCompleteRecitation(article.id, onFeedback) }
                     )
                 } else {
                     HomeScreen(articles, loadError, preferences.favorites, dailyArticle, preferences.leafTotal, preferences.currentStreak, {}, onToggleFavorite)

@@ -11,15 +11,19 @@ class ArticleRepository(private val context: Context) {
             buildList {
                 for (index in 0 until array.length()) {
                     val item = array.getJSONObject(index)
+                    val articleId = item.getInt("id")
+                    val content = item.getJSONArray("content").toStrings()
+                    val translations = item.getJSONArray("translation").toStrings()
                     add(
                         Article(
-                            id = item.getInt("id"),
+                            id = articleId,
                             title = item.getString("title"),
                             dynasty = item.getString("dynasty"),
                             author = item.getString("author"),
                             category = item.getString("category"),
-                            content = item.getJSONArray("content").toStrings(),
-                            translation = item.getJSONArray("translation").toStrings()
+                            content = content,
+                            translation = translations,
+                            sentences = ArticleAnnotationBuilder.build(articleId, content, translations)
                         )
                     )
                 }

@@ -11,6 +11,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import com.fplity.recitemate.data.local.PreferenceManager
+import com.fplity.recitemate.data.local.CompletionFeedback
+import com.fplity.recitemate.data.local.PetInteraction
 import com.fplity.recitemate.data.local.ReadingTheme
 import com.fplity.recitemate.data.local.UserPreferences
 import com.fplity.recitemate.data.repository.ArticleRepository
@@ -44,7 +46,11 @@ private fun QingjianApp() {
             fontSize = preferences.fontSize,
             readingTheme = preferences.readingTheme,
             onToggleFavorite = { articleId -> scope.launch { preferenceManager.toggleFavorite(articleId) } },
-            onCompleteRecitation = { articleId -> scope.launch { preferenceManager.completeRecitation(articleId) } },
+            onCompleteRecitation = { articleId, onFeedback ->
+                scope.launch { onFeedback(preferenceManager.completeRecitation(articleId)) }
+            },
+            onVisitPet = { scope.launch { preferenceManager.visitPet() } },
+            onPetInteraction = { interaction: PetInteraction -> scope.launch { preferenceManager.interactWithPet(interaction) } },
             onFontSizeChange = { value -> scope.launch { preferenceManager.setFontSize(value) } },
             onReadingThemeChange = { value -> scope.launch { preferenceManager.setReadingTheme(value) } }
         )
