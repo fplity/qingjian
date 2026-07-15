@@ -40,10 +40,11 @@ private fun QingjianApp() {
         QingjianNavGraph(
             articles = articleResult.getOrDefault(emptyList()),
             loadError = articleResult.isFailure,
-            favorites = preferences.favorites,
+            preferences = preferences,
             fontSize = preferences.fontSize,
             readingTheme = preferences.readingTheme,
             onToggleFavorite = { articleId -> scope.launch { preferenceManager.toggleFavorite(articleId) } },
+            onCompleteRecitation = { articleId -> scope.launch { preferenceManager.completeRecitation(articleId) } },
             onFontSizeChange = { value -> scope.launch { preferenceManager.setFontSize(value) } },
             onReadingThemeChange = { value -> scope.launch { preferenceManager.setReadingTheme(value) } }
         )

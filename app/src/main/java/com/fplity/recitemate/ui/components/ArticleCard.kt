@@ -20,6 +20,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -48,10 +51,20 @@ fun ArticleCard(
                     Spacer(Modifier.height(4.dp))
                     Text("${article.dynasty} · ${article.author}", style = MaterialTheme.typography.bodyMedium, color = MutedInk)
                 }
-                IconButton(onClick = onToggleFavorite) {
+                val favoriteActionLabel = if (isFavorite) "取消收藏 ${article.title}" else "收藏 ${article.title}"
+                IconButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier.clearAndSetSemantics {
+                        contentDescription = favoriteActionLabel
+                        onClick(label = favoriteActionLabel) {
+                            onToggleFavorite()
+                            true
+                        }
+                    }
+                ) {
                     Icon(
                         imageVector = Icons.Filled.Bookmark,
-                        contentDescription = if (isFavorite) "取消收藏 ${article.title}" else "收藏 ${article.title}",
+                        contentDescription = null,
                         tint = if (isFavorite) DeepGreen else MutedInk
                     )
                 }
