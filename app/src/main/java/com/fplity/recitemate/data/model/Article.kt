@@ -8,13 +8,10 @@ data class Article(
     val category: String,
     val content: List<String>,
     val translation: List<String>,
-    /**
-     * Source-of-truth annotations used by the reading screen.  IDs are stable
-     * across app launches, so UI events never have to guess from display text.
-     */
     val sentences: List<AnnotatedSentence> = emptyList()
 )
 
+/** A source sentence and its paired explanation record. */
 data class AnnotatedSentence(
     val id: String,
     val translationId: String,
@@ -24,6 +21,7 @@ data class AnnotatedSentence(
     val words: List<AnnotatedWord>
 )
 
+/** A tap target in the source sentence. Positions are offsets in [AnnotatedSentence.source]. */
 data class AnnotatedWord(
     val id: String,
     val glossId: String,

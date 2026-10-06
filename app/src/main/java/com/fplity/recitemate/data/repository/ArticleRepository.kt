@@ -13,7 +13,7 @@ class ArticleRepository(private val context: Context) {
                     val item = array.getJSONObject(index)
                     val articleId = item.getInt("id")
                     val content = item.getJSONArray("content").toStrings()
-                    val translations = item.getJSONArray("translation").toStrings()
+                    val translation = item.getJSONArray("translation").toStrings()
                     add(
                         Article(
                             id = articleId,
@@ -22,8 +22,8 @@ class ArticleRepository(private val context: Context) {
                             author = item.getString("author"),
                             category = item.getString("category"),
                             content = content,
-                            translation = translations,
-                            sentences = ArticleAnnotationBuilder.build(articleId, content, translations)
+                            translation = translation,
+                            sentences = ArticleAnnotationBuilder.build(articleId, content, translation)
                         )
                     )
                 }

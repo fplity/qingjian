@@ -9,17 +9,28 @@ class ArticleAnnotationBuilderTest {
     fun `every sentence and source word receives a stable paired id`() {
         val sentences = ArticleAnnotationBuilder.build(
             articleId = 1,
-            content = listOf("君子喻于义，小人喻于利。"),
-            translations = listOf("君子重视道义，小人重视利益。")
+            content = listOf("君子喻于义，小人喻于利。见贤思齐焉，见不贤而内自省也。"),
+            translations = listOf("君子重视道义，小人重视利益。", "见到贤德之人便学习，见到不贤之人便反省。")
         )
 
         assertEquals(2, sentences.size)
+        assertEquals(
+            listOf("君子喻于义，小人喻于利。", "见贤思齐焉，见不贤而内自省也。"),
+            sentences.map { it.source }
+        )
         assertEquals(listOf("article-1-sentence-1", "article-1-sentence-2"), sentences.map { it.id })
         assertEquals(
             listOf("article-1-translation-1", "article-1-translation-2"),
             sentences.map { it.translationId }
         )
         assertTrue(sentences.all { it.hasDirectTranslation })
+        assertEquals(sentences.size, sentences.map { it.translationId }.distinct().size)
+        sentences.forEach { sentence ->
+            assertEquals(sentence.words.size, sentence.words.map { it.id }.distinct().size)
+            sentence.words.forEach { word ->
+                assertEquals(word.source, sentence.source.substring(word.start, word.endExclusive))
+            }
+        }
         assertTrue(sentences.flatMap { it.words }.all { word ->
             word.id.isNotBlank() && word.glossId.isNotBlank() &&
                 word.start < word.endExclusive && word.gloss.isNotBlank()

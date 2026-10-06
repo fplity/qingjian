@@ -10,12 +10,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
@@ -31,8 +29,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -54,15 +52,15 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.fplity.recitemate.data.model.Article
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import com.fplity.recitemate.data.local.CompletionFeedback
 import com.fplity.recitemate.data.model.AnnotatedSentence
 import com.fplity.recitemate.data.model.AnnotatedWord
+import com.fplity.recitemate.data.model.Article
 import com.fplity.recitemate.ui.theme.DeepGreen
 import com.fplity.recitemate.ui.theme.MutedInk
 import com.fplity.recitemate.ui.theme.WarmOrange
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import kotlin.math.roundToInt
 
 @Composable
@@ -76,101 +74,68 @@ fun DetailScreen(
     onComplete: ((CompletionFeedback) -> Unit) -> Unit
 ) {
     var showTranslation by rememberSaveable(article.id) { mutableStateOf(false) }
-    // Feedback is intentionally transient. It must not be serialized across recreation because it contains keepsake objects.
-    var completionFeedback by remember(article.id) { mutableStateOf<CompletionFeedback?>(null) }
-    var isCompleting by remember(article.id) { mutableStateOf(false) }
-    var selectedExplanation by remember(article.id) { mutableStateOf<ExplanationSelection?>(null) }
+    var explanation by remember(article.id) { mutableStateOf<ExplanationSelection?>(null) }
+
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.clearAndSetSemantics {
-                    contentDescription = "返回"
-                    onClick(label = "返回") { onBack(); true }
+            Header(article, isFavorite, onBack, onToggleFavorite)
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                ReadingTab("原文", !showTranslation, Modifier.weight(1f)) {
+                    showTranslation = false
+                    explanation = null
                 }
-            ) { Icon(Icons.Filled.ArrowBack, "返回") }
-            Column(Modifier.weight(1f), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                Text(article.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("${article.dynasty} · ${article.author}", style = MaterialTheme.typography.labelMedium, color = MutedInk)
-            }
-            val favoriteLabel = if (isFavorite) "取消收藏" else "收藏"
-            IconButton(
-                onClick = onToggleFavorite,
-                modifier = Modifier.clearAndSetSemantics {
-                    contentDescription = favoriteLabel
-                    onClick(label = favoriteLabel) { onToggleFavorite(); true }
-                }
-            ) { Icon(Icons.Filled.Bookmark, favoriteLabel, tint = if (isFavorite) DeepGreen else MutedInk) }
-        }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ReadingTab("原文", !showTranslation, Modifier.weight(1f)) {
-                showTranslation = false
-                selectedExplanation = null
-            }
-            ReadingTab("翻译", showTranslation, Modifier.weight(1f)) {
-                showTranslation = true
-                selectedExplanation = null
-            }
-        }
-        if (showTranslation) {
-            TranslationContent(article, fontScale, Modifier.weight(1f))
-        } else {
-            OriginalContent(
-                article = article,
-                fontScale = fontScale,
-                modifier = Modifier.weight(1f),
-                onWordSelected = { word, target -> selectedExplanation = ExplanationSelection.Word(word, target) },
-                onSentenceSelected = { sentence, target -> selectedExplanation = ExplanationSelection.Sentence(sentence, target) }
-            )
-        }
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp)) {
-            Button(
-                onClick = {
-                    if (!isCompleting) {
-                        isCompleting = true
-                        onComplete { feedback ->
-                            if (feedback.awarded || completionFeedback?.awarded != true) completionFeedback = feedback
-                            isCompleting = false
-                        }
-                    }
-                },
-                enabled = !hasCompletedArticle && !isCompleting,
-                modifier = Modifier.fillMaxWidth().clearAndSetSemantics {
-                    contentDescription = "我已完成本次背诵"
-                    if (hasCompletedArticle || isCompleting) {
-                        disabled()
-                    } else {
-                        onClick(label = "我已完成本次背诵") {
-                            isCompleting = true
-                            onComplete { feedback ->
-                                if (feedback.awarded || completionFeedback?.awarded != true) completionFeedback = feedback
-                                isCompleting = false
-                            }
-                            true
-                        }
-                    }
-                }
-            ) { Text(if (hasCompletedArticle) "本篇已收录，可继续阅读" else "我已完成本次背诵") }
-            Text(
-                if (hasCompletedArticle) "这篇已收录进成长记录，重复练习不会增加叶子。" else "完成新篇目后，小笺的花园会长出一片叶子。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MutedInk,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-            AnimatedVisibility(completionFeedback?.awarded == true) {
-                Column(Modifier.padding(top = 8.dp)) {
-                    Text("小笺收到了这次努力，花园里多了一片新叶。", color = DeepGreen, fontWeight = FontWeight.SemiBold)
-                    completionFeedback?.unlockedKeepsakes?.forEach { keepsake ->
-                        Text("小惊喜：${keepsake.title} · ${keepsake.description}", color = DeepGreen, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
-                    }
+                ReadingTab("翻译", showTranslation, Modifier.weight(1f)) {
+                    showTranslation = true
+                    explanation = null
                 }
             }
+            if (showTranslation) {
+                TranslationContent(article, fontScale, Modifier.weight(1f))
+            } else {
+                OriginalContent(
+                    article = article,
+                    fontScale = fontScale,
+                    modifier = Modifier.weight(1f),
+                    onWordSelected = { word, anchor -> explanation = ExplanationSelection.Word(word, anchor) },
+                    onSentenceSelected = { sentence, anchor -> explanation = ExplanationSelection.Sentence(sentence, anchor) }
+                )
+            }
+            CompletionPanel(article.id, hasCompletedArticle, onComplete)
         }
+        explanation?.let { selection ->
+            AnchoredExplanationPopup(selection, onDismiss = { explanation = null })
         }
-        selectedExplanation?.let { selection ->
-            AnchoredExplanationPopup(selection = selection, onDismiss = { selectedExplanation = null })
+    }
+}
+
+@Composable
+private fun Header(article: Article, isFavorite: Boolean, onBack: () -> Unit, onToggleFavorite: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier.clearAndSetSemantics {
+                contentDescription = "返回"
+                onClick(label = "返回") { onBack(); true }
+            }
+        ) { Icon(Icons.Filled.ArrowBack, "返回") }
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(article.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(article.dynasty + " · " + article.author, style = MaterialTheme.typography.labelMedium, color = MutedInk)
         }
+        val favoriteLabel = if (isFavorite) "取消收藏" else "收藏"
+        IconButton(
+            onClick = onToggleFavorite,
+            modifier = Modifier.clearAndSetSemantics {
+                contentDescription = favoriteLabel
+                onClick(label = favoriteLabel) { onToggleFavorite(); true }
+            }
+        ) { Icon(Icons.Filled.Bookmark, favoriteLabel, tint = if (isFavorite) DeepGreen else MutedInk) }
     }
 }
 
@@ -182,7 +147,10 @@ private fun ReadingTab(text: String, selected: Boolean, modifier: Modifier, onCl
             contentDescription = text
             onClick(label = text) { onClick(); true }
         },
-        colors = ButtonDefaults.outlinedButtonColors(containerColor = if (selected) DeepGreen else Color.Transparent, contentColor = if (selected) Color.White else DeepGreen)
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = if (selected) DeepGreen else Color.Transparent,
+            contentColor = if (selected) Color.White else DeepGreen
+        )
     ) { Text(text) }
 }
 
@@ -194,15 +162,14 @@ private fun OriginalContent(
     onWordSelected: (AnnotatedWord, IntRect) -> Unit,
     onSentenceSelected: (AnnotatedSentence, IntRect) -> Unit
 ) {
-    LazyColumn(modifier = modifier.fillMaxWidth(), contentPadding = PaddingValues(start = 28.dp, end = 28.dp, top = 24.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+    LazyColumn(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(start = 28.dp, end = 28.dp, top = 24.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
         item { Text(article.category, color = WarmOrange, style = MaterialTheme.typography.labelLarge) }
         items(article.sentences, key = { it.id }) { sentence ->
-            InteractiveSentence(
-                sentence = sentence,
-                fontScale = fontScale,
-                onWordSelected = onWordSelected,
-                onSentenceSelected = onSentenceSelected
-            )
+            InteractiveSentence(sentence, fontScale, onWordSelected, onSentenceSelected)
         }
     }
 }
@@ -214,10 +181,9 @@ private fun InteractiveSentence(
     onWordSelected: (AnnotatedWord, IntRect) -> Unit,
     onSentenceSelected: (AnnotatedSentence, IntRect) -> Unit
 ) {
-    var layoutResult by remember(sentence.id) { mutableStateOf<TextLayoutResult?>(null) }
+    var layout by remember(sentence.id) { mutableStateOf<TextLayoutResult?>(null) }
     var textOrigin by remember(sentence.id) { mutableStateOf(Offset.Zero) }
     var sentenceBounds by remember(sentence.id) { mutableStateOf(IntRect.Zero) }
-
     Text(
         text = sentence.source,
         fontSize = (20f * fontScale).sp,
@@ -229,33 +195,91 @@ private fun InteractiveSentence(
                 textOrigin = coordinates.positionInRoot()
                 sentenceBounds = coordinates.boundsInRoot().toIntRect()
             }
-            .pointerInput(sentence.id, sentence.words, layoutResult, textOrigin, sentenceBounds) {
+            .pointerInput(sentence.id, layout, textOrigin, sentenceBounds) {
                 detectTapGestures(
                     onTap = { position ->
-                        val layout = layoutResult ?: return@detectTapGestures
-                        val offset = layout.getOffsetForPosition(position)
+                        val currentLayout = layout ?: return@detectTapGestures
+                        val offset = currentLayout.getOffsetForPosition(position)
                         sentence.words.firstOrNull { offset in it.start until it.endExclusive }?.let { word ->
-                            onWordSelected(word, layout.getBoundingBox(word.start).toRootRect(textOrigin))
+                            onWordSelected(word, currentLayout.getBoundingBox(word.start).toRootRect(textOrigin))
                         }
                     },
-                    onLongPress = {
-                        onSentenceSelected(sentence, sentenceBounds)
-                    }
+                    onLongPress = { onSentenceSelected(sentence, sentenceBounds) }
                 )
             },
-        onTextLayout = { layoutResult = it }
+        onTextLayout = { layout = it }
     )
 }
 
 @Composable
 private fun TranslationContent(article: Article, fontScale: Float, modifier: Modifier) {
-    LazyColumn(modifier = modifier.fillMaxWidth(), contentPadding = PaddingValues(start = 28.dp, end = 28.dp, top = 24.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(start = 28.dp, end = 28.dp, top = 24.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         item { Text("白话翻译", color = WarmOrange, style = MaterialTheme.typography.labelLarge) }
         items(article.sentences, key = { it.translationId }) { sentence ->
-            Row(Modifier.fillMaxWidth()) {
-                Text(sentence.id.substringAfterLast('-'), color = DeepGreen, fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(sentence.translation, modifier = Modifier.weight(1f), fontSize = (17f * fontScale).sp, lineHeight = (29f * fontScale).sp)
+            Text(
+                text = sentence.translation,
+                fontSize = (17f * fontScale).sp,
+                lineHeight = (29f * fontScale).sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompletionPanel(
+    articleId: Int,
+    hasCompletedArticle: Boolean,
+    onComplete: ((CompletionFeedback) -> Unit) -> Unit
+) {
+    var completionFeedback by remember(articleId) { mutableStateOf<CompletionFeedback?>(null) }
+    var isCompleting by remember(articleId) { mutableStateOf(false) }
+    val complete = {
+        if (!isCompleting) {
+            isCompleting = true
+            onComplete { feedback ->
+                if (feedback.awarded || completionFeedback?.awarded != true) {
+                    completionFeedback = feedback
+                }
+                isCompleting = false
+            }
+        }
+    }
+
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp)) {
+        Button(
+            onClick = complete,
+            enabled = !hasCompletedArticle && !isCompleting,
+            modifier = Modifier.fillMaxWidth().clearAndSetSemantics {
+                contentDescription = "我已完成本次背诵"
+                if (hasCompletedArticle || isCompleting) {
+                    disabled()
+                } else {
+                    onClick(label = "我已完成本次背诵") { complete(); true }
+                }
+            }
+        ) { Text(if (hasCompletedArticle) "本篇已收录，可继续阅读" else "我已完成本次背诵") }
+        Text(
+            if (hasCompletedArticle) "这篇已收录进成长记录，重复练习不会增加叶子。"
+            else "完成新篇目后，小笺的花园会长出一片叶子。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MutedInk,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+        AnimatedVisibility(completionFeedback?.awarded == true) {
+            Column(Modifier.padding(top = 8.dp)) {
+                Text("小笺收到了这次努力，花园里多了一片新叶。", color = DeepGreen, fontWeight = FontWeight.SemiBold)
+                completionFeedback?.unlockedKeepsakes?.forEach { keepsake ->
+                    Text(
+                        "小惊喜：${keepsake.title} · ${keepsake.description}",
+                        color = DeepGreen,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
             }
         }
     }
@@ -273,18 +297,15 @@ private fun AnchoredExplanationPopup(selection: ExplanationSelection, onDismiss:
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
     val popupWidth = with(density) { 280.dp.roundToPx() }
-    val popupHeight = with(density) { 164.dp.roundToPx() }
-    val gap = with(density) { 8.dp.roundToPx() }
+    val popupHeight = with(density) { 156.dp.roundToPx() }
     val margin = with(density) { 12.dp.roundToPx() }
+    val gap = with(density) { 8.dp.roundToPx() }
     val screenWidth = with(density) { configuration.screenWidthDp.dp.roundToPx() }
     val screenHeight = with(density) { configuration.screenHeightDp.dp.roundToPx() }
     val x = selection.anchor.left.coerceIn(margin, (screenWidth - popupWidth - margin).coerceAtLeast(margin))
     val below = selection.anchor.bottom + gap
-    val y = if (below + popupHeight <= screenHeight - margin) {
-        below
-    } else {
-        (selection.anchor.top - popupHeight - gap).coerceAtLeast(margin)
-    }
+    val y = if (below + popupHeight <= screenHeight - margin) below
+    else (selection.anchor.top - popupHeight - gap).coerceAtLeast(margin)
 
     Popup(
         alignment = Alignment.TopStart,
@@ -306,11 +327,7 @@ private fun AnchoredExplanationPopup(selection: ExplanationSelection, onDismiss:
                         Text(selection.word.gloss, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
                     }
                     is ExplanationSelection.Sentence -> {
-                        Text(
-                            if (selection.sentence.hasDirectTranslation) "整句翻译" else "篇章提示",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = DeepGreen
-                        )
+                        Text("整句翻译", style = MaterialTheme.typography.labelLarge, color = DeepGreen)
                         Text(selection.sentence.translation, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
                     }
                 }
